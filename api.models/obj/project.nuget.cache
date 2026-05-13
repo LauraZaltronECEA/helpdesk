@@ -1,8 +1,12 @@
 {
   "version": 2,
-  "dgSpecHash": "dm4q9Hq3cwo=",
+  "dgSpecHash": "oauL7J8qDZ8=",
   "success": true,
-  "projectFilePath": "C:\\Users\\Alumnos\\source\\repos\\api.helpdesk\\api.models\\api.models.csproj",
-  "expectedPackageFiles": [],
+  "projectFilePath": "C:\\Users\\blauury\\source\\repos\\helpdesk\\api.models\\api.models.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\blauury\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\8.0.26\\microsoft.windowsdesktop.app.ref.8.0.26.nupkg.sha512",
+    "C:\\Users\\blauury\\.nuget\\packages\\microsoft.netcore.app.ref\\8.0.26\\microsoft.netcore.app.ref.8.0.26.nupkg.sha512",
+    "C:\\Users\\blauury\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\8.0.26\\microsoft.aspnetcore.app.ref.8.0.26.nupkg.sha512"
+  ],
   "logs": []
 }
