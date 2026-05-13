@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using Newtonsoft.Json;
 using System.Data;
 using Formatting = Newtonsoft.Json.Formatting;

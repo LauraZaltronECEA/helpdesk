@@ -1,7 +1,12 @@
+using api.helpdesk.Data;
+using api.helpdesk.Services;
+using api.models;
 using api.services.Handlers;
 using api.services.Repositores;
 using api.services.v1;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
@@ -68,12 +73,33 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-SqliteHandler.ConnectionString = builder.Configuration.GetConnectionString("defaultConnection")
+var connectionString = builder.Configuration.GetConnectionString("defaultConnection")
     ?? throw new InvalidOperationException("ConnectionStrings:defaultConnection no configurado");
 
-builder.Services.AddSingleton<IUserRepository, LoginService>();
+SqliteHandler.ConnectionString = connectionString;
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlite(connectionString));
+
+builder.Services.AddIdentity<AppUser, IdentityRole<int>>(options =>
+{
+    options.SignIn.RequireConfirmedAccount = true;
+})
+.AddEntityFrameworkStores<AppDbContext>()
+.AddDefaultTokenProviders();
+
+builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("Smtp"));
+builder.Services.AddTransient<IEmailSender<AppUser>, EmailSenderService>();
+
+builder.Services.AddScoped<IUserRepository, LoginService>();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.EnsureCreated();
+}
 
 app.UseSwagger();
 app.UseSwaggerUI(c =>

@@ -1,0 +1,87 @@
+= CHANGELOG - Helpdesk API =
+
+== 1. Correccion de Target Framework (api.services) ==
+
+Problema: api.services apuntaba a .NET Framework 4.7.2 (formato .csproj antiguo)
+mientras que api.helpdesk y api.models apuntaban a net8.0 (formato SDK).
+El build fallaba porque el SDK de .NET 8 no puede compilar proyectos de .NET Framework 4.7.2.
+
+Archivos modificados:
+- api.services/api.services.csproj -> Reescribido de formato antiguo a SDK-style con TargetFramework=net8.0
+- api.services/Properties/AssemblyInfo.cs -> Eliminado (los proyectos SDK-style lo autogeneran)
+- api.services/bin/ y api.services/obj/ -> Limpiados (artefactos viejos)
+
+Paquetes NuGet en api.services:
+- Microsoft.Data.Sqlite 8.0.0
+- Newtonsoft.Json 13.0.3
+- Microsoft.IdentityModel.Tokens 7.1.2
+- System.IdentityModel.Tokens.Jwt 7.1.2
+- Se agrego: <FrameworkReference Include="Microsoft.AspNetCore.App" /> (para usar Identity y UserManager)
+- Se elimino: Microsoft.Extensions.Configuration 8.0.0 (ya viene con el FrameworkReference)
+
+== 2. Correccion de Swagger "Sin operaciones" (UserController) ==
+
+Problema: UserController.cs estaba vacio sin herencia de ControllerBase,
+sin [ApiController], sin [Route], sin metodos. Swagger no encontraba endpoints.
+
+Archivos modificados:
+- api.helpdesk/Controllers/v1/UserController.cs -> Implementado con:
+  * [ApiController] + [Route("api/v1/[controller]")] + ControllerBase
+  * POST /api/v1/user/login
+  * POST /api/v1/user/register
+
+== 3. Verificacion de Email (ASP.NET Core Identity) ==
+
+Problema: No habia verificacion de email al registrarse. Los usuarios podian
+iniciar sesion inmediatamente sin confirmar su correo.
+
+Archivos nuevos:
+- api.models/AppUser.cs -> Usuario personalizado de Identity extendiendo IdentityUser<int>
+  con campos: Fullname, Active (T/F), Role, Last_Login
+- api.helpdesk/Data/AppDbContext.cs -> DbContext de EF Core con IdentityDbContext
+- api.helpdesk/Services/EmailSenderService.cs -> Implementacion de IEmailSender<AppUser>
+  usando MailKit (SMTP) con plantillas HTML
+
+Archivos modificados:
+- api.helpdesk/Program.cs -> Se agrego:
+  * AddDbContext<AppDbContext> con SQLite
+  * AddIdentity<AppUser, IdentityRole<int>> con RequireConfirmedAccount
+  * AddDefaultTokenProviders
+  * DI de IEmailSender<AppUser>
+  * EnsureCreated() al iniciar para crear la BD automaticamente
+- api.helpdesk/Controllers/v1/UserController.cs -> Se modifico Register() para usar
+  UserManager.CreateAsync(), generar token de confirmacion, construir link de verificacion
+  y enviar email. Se agrego GET confirm-email.
+- api.services/v1/LoginService.cs -> Reescribito para usar UserManager<AppUser> en
+  lugar de SQL directo (SqliteHandler). Ahora valida que el email este confirmado
+  antes de permitir el login. Se elimino el metodo Register().
+- api.services/Repositories/IUserRepository.cs -> Se elimino Register() (ahora se
+  maneja en el controlador con UserManager)
+- api.helpdesk/appsettings.json -> Se agrego seccion "Smtp" para configurar el
+  servidor de correo
+
+Paquetes NuGet agregados:
+- Microsoft.EntityFrameworkCore.Sqlite 8.0.11 -> api.helpdesk
+- Microsoft.AspNetCore.Identity.EntityFrameworkCore 8.0.11 -> api.helpdesk
+- Microsoft.AspNetCore.Identity.UI 8.0.11 -> api.helpdesk
+- MailKit 4.8.0 -> api.helpdesk
+- Microsoft.Extensions.Identity.Stores 8.0.11 -> api.models
+
+Cambios de arquitectura:
+- Acceso a datos: Se migro de SQL directo (SqliteHandler) a Entity Framework Core
+  para la gestion de usuarios
+- Auth: Se migro de hash SHA256 personalizado (EncriptHandler) a ASP.NET Core Identity
+  con PBKDF2 (PasswordHasher)
+- Registro: Antes INSERT directo SQL -> Ahora UserManager.CreateAsync() + token de
+  confirmacion + email con MailKit
+- Login: Antes SELECT directo SQL + SHA256 -> Ahora UserManager.FindByNameAsync() +
+  CheckPasswordAsync() + IsEmailConfirmedAsync()
+- BD: Tabla antigua "users" reemplazada por "AspNetUsers" con esquema completo de Identity
+- Inicializacion: EnsureCreated() crea la BD automaticamente al primer inicio
+
+Mejoras de seguridad:
+- Contrasenas hasheadas con PBKDF2 (Identity) en lugar de SHA256
+- Confirmacion de email requerida antes de login (RequireConfirmedAccount)
+- Token de confirmacion URL-encoded para evitar links rotos
+- Mensajes de error genericos ("Credenciales invalidas") para evitar enumeracion de usuarios
+- Credenciales SMTP configurables en appsettings.json
