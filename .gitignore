@@ -1,2 +1,8 @@
-.vs
-obj
+.vs/
+bin/
+obj/
+*.user
+*.suo
+*.log
+*.sqlite-shm
+*.sqlite-wal

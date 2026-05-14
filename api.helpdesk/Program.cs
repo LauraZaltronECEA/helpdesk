@@ -92,6 +92,9 @@ builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("Smtp"
 builder.Services.AddTransient<IEmailSender<AppUser>, EmailSenderService>();
 
 builder.Services.AddScoped<IUserRepository, LoginService>();
+builder.Services.AddScoped<IAreaRepository, AreaService>();
+builder.Services.AddScoped<IStatusRepository, StatusService>();
+builder.Services.AddScoped<ITicketRepository, TicketService>();
 
 var app = builder.Build();
 
